@@ -237,6 +237,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
     int endX = coordDestination % 10, endY = coordDestination / 10;
     char piece = chessBoard->board[startY][startX].piece;
 
+
     if (piece >= 65 && piece <= 90)
     {
         // white pieces
@@ -262,8 +263,30 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 return false;
             case 'R':   //white rook
                 //check to see if the rook moves in a straight line
-                
-                return false;
+                if (startX == endX && startY != endY)   
+                {
+                    // vertical check
+                    int rookVertical = endY - startY;
+                    int step = (rookVertical > 0) ? 1 : -1;
+                    for (int y = startY + step; y != endY; y += step) {
+                        if (!checkEmpty(startX, y, chessBoard)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+                else if (startY == endY && startX != endX)
+                {
+                    // horizontal check
+                    int rookHorizontal = endX - startX;
+                    int step = (rookHorizontal > 0) ? 1 : -1;
+                    for (int x = startX + step; x != endX; x += step) {
+                        if (!checkEmpty(x, startY, chessBoard)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
             case 'N':   //white knight
                 return false;
             case 'B':   //white bishop
@@ -274,25 +297,12 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 return false;
         }
     }
-    else if (piece >= 97 && piece <= 122)
-    {
-        // black pieces
-        switch (piece)
-        {
-            case 'p':   //black pawn
-                return false;
-            case 'r':   //black rook
-                return false;
-            case 'n':   //black knight
-                return false;
-            case 'b':   //black bishop
-                return false;
-            case 'q':   //black queen
-                return false;
-            case 'k':   //black king
-                return false;
-        }
-    }
+
+    /*
+    There was originally a switch statement for black pieces here, but I feel like that would take up too much time and resources during runtime.
+    I think instead of simulating all 64x64 possibilities, we should somehow generate a list of only legal moves first which is also ranked somehow.    
+    */
+
     return true;    //     <--- this is set to true for now just so the code compiles and I can test the move piece function, after everything is implmeneted this will be set to false
 }
 
