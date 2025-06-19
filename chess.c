@@ -184,6 +184,12 @@ bool moveParsing(char *move, int coordRecorder[])
         return false;
     }
 
+    if (move[0] == move[2] && move[1] == move[3])
+    {
+        printf("Invalid move: starting pos cannot be the same as the end pos\n");
+        return false;
+    }
+
     if ((move[0] >= '1' && move[0] <= '8') &&
         (tolower(move[1]) >= 'a' && tolower(move[1]) <= 'h') &&
         (move[2] >= '1' && move[2] <= '8') &&
@@ -199,14 +205,6 @@ bool moveParsing(char *move, int coordRecorder[])
 
 void updateAttackMap(BOARD *chessBoard)
 {
-    for (int i = 0; i < 8; i++)
-    {
-        for (int j = 0; j < 8; j++)
-        {
-            
-        }
-    }
-
     return;
 }
 
