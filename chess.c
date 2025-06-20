@@ -360,8 +360,57 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 return false; // neither a valid bishop nor rook move
             }
             case 'K':   //white king
-                
-                return false;
+                /*
+                This is kind of a really shit way of doing this for the king moveChecker as it is pretty much
+                the queen movecChecker copy and pasted but also checking for whether or not the king only moves 1 square.
+
+                ** THINGS THAT HAVE TO BE IMPLEMENTED LATER **
+                    - a way to check if the move will put the king in check (after the attackMapChecker is finished)
+                    - a way to check if the move castles the king and a rook (have to check for checks on the way to the rook
+                      and whether or not the king has been moved before castling).
+                */
+
+                // Diagonal like a bishop
+                if (abs(endY - startY) == abs(endX - startX) && abs(endY - startY) == 1)
+                {
+                    int dx = (endX > startX) ? 1 : -1;
+                    int dy = (endY > startY) ? 1 : -1;
+                    int x = startX + dx;
+                    int y = startY + dy;
+
+                    while (x != endX && y != endY)
+                    {
+                        if (!checkEmpty(x, y, chessBoard)) return false;
+                        x += dx;
+                        y += dy;
+                    }
+
+                    if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
+                        return true;
+                }
+
+                // Straight line like a rook
+                else if ((startX == endX && abs(endY - startY) == 1)|| (startY == endY) && abs(endX - startX) == 1)
+                {
+                    if (startX == endX) {
+                        int step = (endY > startY) ? 1 : -1;
+                        for (int y = startY + step; y != endY; y += step)
+                        {
+                            if (!checkEmpty(startX, y, chessBoard)) return false;
+                        }
+                    } else if (startY == endY) {
+                        int step = (endX > startX) ? 1 : -1;
+                        for (int x = startX + step; x != endX; x += step)
+                        {
+                            if (!checkEmpty(x, startY, chessBoard)) return false;
+                        }
+                    }
+
+                    if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
+                        return true;
+                }
+
+                return false; // neither a valid bishop nor rook move
         }
     }
 
