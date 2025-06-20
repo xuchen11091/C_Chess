@@ -419,7 +419,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
     I think instead of simulating all 64x64 possibilities, we should somehow generate a list of only legal moves first which is also ranked somehow.    
     */
 
-    return true;    //     <--- this is set to true for now just so the code compiles and I can test the move piece function, after everything is implmeneted this will be set to false
+    return false;
 }
 
 bool checkEmpty(int x, int y, BOARD *chessBoard)
