@@ -234,6 +234,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
     int startX = coordStart % 10, startY = coordStart / 10;
     int endX = coordDestination % 10, endY = coordDestination / 10;
     char piece = chessBoard->board[startY][startX].piece;
+    char destination = chessBoard->board[endY][endX].piece;
 
 
     if (piece >= 65 && piece <= 90)
@@ -260,34 +261,55 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 // TODO: handle diagonal captures and en passant
                 return false;
             case 'R':   //white rook
-                //check to see if the rook moves in a straight line
-                if (startX == endX && startY != endY)   
-                {
-                    // vertical check
+                if (startX == endX && startY != endY) {
+                    // vertical
                     int rookVertical = endY - startY;
                     int step = (rookVertical > 0) ? 1 : -1;
                     for (int y = startY + step; y != endY; y += step) {
-                        if (!checkEmpty(startX, y, chessBoard)) {
+                        if (!checkEmpty(startX, y, chessBoard))
                             return false;
-                        }
                     }
-                    return true;
                 }
-                else if (startY == endY && startX != endX)
-                {
-                    // horizontal check
+                else if (startY == endY && startX != endX) {
+                    // horizontal
                     int rookHorizontal = endX - startX;
                     int step = (rookHorizontal > 0) ? 1 : -1;
                     for (int x = startX + step; x != endX; x += step) {
-                        if (!checkEmpty(x, startY, chessBoard)) {
+                        if (!checkEmpty(x, startY, chessBoard))
                             return false;
-                        }
                     }
-                    return true;
                 }
+                else {
+                    return false; // ❗ invalid rook direction
+                }
+
+                if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
+                    return true;
+                return false;
             case 'N':   //white knight
                 return false;
             case 'B':   //white bishop
+                if (abs(endY - startY) != abs(endX - startX))
+                    return false; // not a diagonal move
+
+                int bishopVertical = endY - startY, bishopHorizontal = endX - startX;
+                int stepVertical = (bishopVertical > 0) ? 1 : -1;
+                int stepHorizontal = (bishopHorizontal > 0) ? 1 : -1;
+
+                int x = startX + stepHorizontal;
+                int y = startY + stepVertical;
+                while (x != endX && y != endY)
+                {
+                    if (!checkEmpty(x, y, chessBoard))
+                        return false;
+                    x += stepHorizontal;
+                    y += stepVertical;
+                }
+
+                // final square must be empty or contain black piece
+                if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
+                    return true;
+
                 return false;
             case 'Q':   //white queen
                 return false;
