@@ -258,7 +258,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     }
                 }
 
-                // TODO: handle diagonal captures and en passant
+                // ******** TODO: handle diagonal captures and en passant *********
                 return false;
             case 'R':   //white rook
                 if (startX == endX && startY != endY)
