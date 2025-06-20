@@ -261,20 +261,24 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 // TODO: handle diagonal captures and en passant
                 return false;
             case 'R':   //white rook
-                if (startX == endX && startY != endY) {
+                if (startX == endX && startY != endY)
+                {
                     // vertical
                     int rookVertical = endY - startY;
                     int step = (rookVertical > 0) ? 1 : -1;
-                    for (int y = startY + step; y != endY; y += step) {
+                    for (int y = startY + step; y != endY; y += step)
+                    {
                         if (!checkEmpty(startX, y, chessBoard))
                             return false;
                     }
                 }
-                else if (startY == endY && startX != endX) {
+                else if (startY == endY && startX != endX)
+                {
                     // horizontal
                     int rookHorizontal = endX - startX;
                     int step = (rookHorizontal > 0) ? 1 : -1;
-                    for (int x = startX + step; x != endX; x += step) {
+                    for (int x = startX + step; x != endX; x += step)
+                    {
                         if (!checkEmpty(x, startY, chessBoard))
                             return false;
                     }
