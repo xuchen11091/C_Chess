@@ -315,9 +315,46 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     return true;
 
                 return false;
-            case 'Q':   //white queen
-                return false;
+            case 'Q': {
+                // Diagonal like a bishop
+                if (abs(endY - startY) == abs(endX - startX)) {
+                    int dx = (endX > startX) ? 1 : -1;
+                    int dy = (endY > startY) ? 1 : -1;
+                    int x = startX + dx;
+                    int y = startY + dy;
+
+                    while (x != endX && y != endY) {
+                        if (!checkEmpty(x, y, chessBoard)) return false;
+                        x += dx;
+                        y += dy;
+                    }
+
+                    if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
+                        return true;
+                }
+
+                // Straight line like a rook
+                else if (startX == endX || startY == endY) {
+                    if (startX == endX) {
+                        int step = (endY > startY) ? 1 : -1;
+                        for (int y = startY + step; y != endY; y += step) {
+                            if (!checkEmpty(startX, y, chessBoard)) return false;
+                        }
+                    } else if (startY == endY) {
+                        int step = (endX > startX) ? 1 : -1;
+                        for (int x = startX + step; x != endX; x += step) {
+                            if (!checkEmpty(x, startY, chessBoard)) return false;
+                        }
+                    }
+
+                    if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
+                        return true;
+                }
+
+                return false; // neither a valid bishop nor rook move
+            }
             case 'K':   //white king
+                
                 return false;
         }
     }
