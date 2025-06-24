@@ -291,6 +291,16 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     return true;
                 return false;
             case 'N':   //white knight
+            {
+                int dx = abs(endX - startX);
+                int dy = abs(endY - startY);
+                if ((dx == 2 && dy == 1) || (dx == 1 && dy == 2))
+                {
+                    if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
+                    {
+                        return true;
+                    }
+                }
                 return false;
             case 'B':   //white bishop
                 if (abs(endY - startY) != abs(endX - startX))
@@ -315,6 +325,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     return true;
 
                 return false;
+            }
             case 'Q':
             {
                 // Diagonal like a bishop
