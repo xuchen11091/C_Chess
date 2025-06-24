@@ -57,6 +57,7 @@ void updateAttackMap(BOARD *chessBoard);
 bool moveParsing(char *move, int coordRecorder[]);     // finished
 bool isCastle(int coordStart, int coordDestination, BOARD *chessBoard);
 bool checkEmpty(int x, int y, BOARD *chessBoard);
+bool moveLeavesKingInCheck(int coordStart, int coordDestination, BOARD *chessBoard);
 
 int main(int argc, char *argv[])
 {
@@ -226,6 +227,20 @@ int gameCheck(BOARD *chessBoard)
     return 0;   // have this function return checker once the code is written
 }
 
+bool moveLeavesKingInCheck(int coordStart, int coordDestination, BOARD *chessBoard)
+{
+    /*
+    **********************************
+    TODO: implement this POS fucntion
+    **********************************
+
+        --return true of the move leaves the king in check
+
+    */
+
+    return true;
+}
+
 bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
 {
     // first check if the move is valid (in terms of if it's a move that can be done by the piece)
@@ -246,7 +261,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 // Move forward one
                 if (startX == endX && startY - endY == 1 && checkEmpty(startX, endY, chessBoard))
                 {
-                    return true;
+                    break;
                 }
 
                 // Move forward two from starting position
@@ -254,7 +269,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 {
                     if (checkEmpty(startX, startY - 1, chessBoard) && checkEmpty(startX, endY, chessBoard))
                     {
-                        return true;
+                        break;
                     }
                 }
 
@@ -288,7 +303,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 }
 
                 if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
-                    return true;
+                    break;
                 return false;
             case 'N':   //white knight
             {
@@ -298,7 +313,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 {
                     if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
                     {
-                        return true;
+                        break;
                     }
                 }
                 return false;
@@ -322,7 +337,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
 
                 // final square must be empty or contain black piece
                 if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
-                    return true;
+                    break;
 
                 return false;
             }
@@ -344,7 +359,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     }
 
                     if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
-                        return true;
+                        break;
                 }
 
                 // Straight line like a rook
@@ -365,7 +380,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     }
 
                     if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
-                        return true;
+                        break;
                 }
 
                 return false; // neither a valid bishop nor rook move
@@ -397,7 +412,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     }
 
                     if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
-                        return true;
+                        break;
                 }
 
                 // Straight line like a rook
@@ -418,7 +433,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     }
 
                     if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
-                        return true;
+                        break;
                 }
 
                 return false; // neither a valid bishop nor rook move
@@ -429,7 +444,11 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
     There was originally a switch statement for black pieces here, but I feel like that would take up too much time and resources during runtime.
     I think instead of simulating all 64x64 possibilities, we should somehow generate a list of only legal moves first which is also ranked somehow.    
     */
-
+    if (!moveLeavesKingInCheck(coordStart, coordDestination, chessBoard))
+    {
+        return true;
+    }
+    printf("The move will leave the king in check.\n");
     return false;
 }
 
