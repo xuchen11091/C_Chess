@@ -234,7 +234,7 @@ bool moveLeavesKingInCheck(int coordStart, int coordDestination, BOARD *chessBoa
     TODO: implement this POS fucntion
     **********************************
 
-        --return true of the move leaves the king in check
+        --return true if the move leaves the king in check
 
     */
 
