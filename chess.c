@@ -449,6 +449,12 @@ bool moveLeavesKingInCheck(BOARD *chessBoard, int color)    // 0 for white, 1 fo
             }
         }
 
+        /*
+        *****************************************************
+        TODO: CHECK IF KNIGHT MOVE WILL PUT THE KING IN CHECK
+        *****************************************************
+        */
+
         // if the functino does not return true
         return false;
     }
