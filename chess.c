@@ -371,7 +371,83 @@ bool moveLeavesKingInCheck(BOARD *chessBoard, int color)    // 0 for white, 1 fo
             }
         }
 
+        // forward left diagonal
 
+        if ((kingX - 1) >= 0 && (kingY - 1) >= 0)
+        {
+            if (chessBoard->board[kingY - 1][kingX - 1].piece == 'k' || chessBoard->board[kingY - 1][kingX - 1].piece == 'p')
+            {
+                return true;
+            }
+            compX = kingX - 1, compY = kingY - 1;
+            while (compX >= 0 && compY >= 0)
+            {
+                if ((chessBoard->board[compY][compX].piece >= 65 && chessBoard->board[compY][compX].piece <= 90))
+                {
+                    break;
+                }
+                else if (
+                            chessBoard->board[compY][compX].piece == 'q' ||
+                            chessBoard->board[compY][compX].piece == 'b'
+                )
+                {
+                    return true;
+                }
+                compX--, compY--;
+            }
+        }
+
+        //backward right diagonal
+
+        if ((kingX + 1) <= 7 && (kingY + 1) <= 7)
+        {
+            if (chessBoard->board[kingY + 1][kingX + 1].piece == 'k')
+            {
+                return true;
+            }
+            compX = kingX + 1, compY = kingY + 1;
+            while (compX <= 7 && compY <= 7)
+            {
+                if (chessBoard->board[compY][compX].piece >= 65 && chessBoard->board[compY][compX].piece <= 90)
+                {
+                    break;
+                }
+                else if (
+                            chessBoard->board[compY][compX].piece == 'q' ||
+                            chessBoard->board[compY][compX].piece == 'b'
+                )
+                {
+                    return true;
+                }
+                compX++, compY++;
+            }
+        }
+
+        //backward left diagonal
+
+        if ((kingX - 1) >= 0 && (kingY + 1) <= 7)
+        {
+            if (chessBoard->board[kingY + 1][kingX - 1].piece == 'k')
+            {
+                return true;
+            }
+            compX = kingX - 1, compY = kingY + 1;
+            while (compX >= 0 && compY <= 7)
+            {
+                if (chessBoard->board[compY][compX].piece >= 65 && chessBoard->board[compY][compX].piece <= 90)
+                {
+                    break;
+                }
+                else if (
+                            chessBoard->board[compY][compX].piece == 'q' ||
+                            chessBoard->board[compY][compX].piece == 'b'
+                )
+                {
+                    return true;
+                }
+                compX--, compY++;
+            }
+        }
 
         // if the functino does not return true
         return false;
