@@ -57,7 +57,7 @@ void updateAttackMap(BOARD *chessBoard);
 bool moveParsing(char *move, int coordRecorder[]);     // finished
 bool isCastle(int coordStart, int coordDestination, BOARD *chessBoard);
 bool checkEmpty(int x, int y, BOARD *chessBoard);
-bool moveLeavesKingInCheck(int coordStart, int coordDestination, BOARD *chessBoard);
+bool moveLeavesKingInCheck(BOARD *chessBoard, int color);
 
 int main(int argc, char *argv[])
 {
@@ -227,7 +227,7 @@ int gameCheck(BOARD *chessBoard)
     return 0;   // have this function return checker once the code is written
 }
 
-bool moveLeavesKingInCheck(int coordStart, int coordDestination, BOARD *chessBoard)
+bool moveLeavesKingInCheck(BOARD *chessBoard, int color)    // 0 for white, 1 for black
 {
     /*
     **********************************
@@ -237,8 +237,151 @@ bool moveLeavesKingInCheck(int coordStart, int coordDestination, BOARD *chessBoa
         --return true if the move leaves the king in check
 
     */
+    if (color == 0)
+    {
+        int kingX = chessBoard->whiteKing.x, compX;
+        int kingY = chessBoard->whiteKing.y, compY;
 
-    return true;
+        // checks up
+        if (kingY - 1 >= 0)
+        {
+            if (chessBoard->board[kingY - 1][kingX].piece == 'k')
+            {
+                return true;
+            }
+            compY = kingY - 1;
+            while(compY >= 0)
+            {
+                if ((chessBoard->board[compY][kingX].piece >= 65 && chessBoard->board[compY][kingX].piece <= 90))
+                {
+                    break;
+                }
+                else if (
+                            chessBoard->board[compY][kingX].piece == 'r' ||
+                            chessBoard->board[compY][kingX].piece == 'q'
+                )
+                {
+                    return true;
+                }
+                compY--;
+            }
+        }
+
+        // checks down
+
+        if (kingY + 1 <= 7)
+        {
+            if (chessBoard->board[kingY + 1][kingX].piece == 'k')
+            {
+                return true;
+            }
+            compY = kingY + 1;
+            while (compY <= 7)
+            {
+                if ((chessBoard->board[compY][kingX].piece >= 65 && chessBoard->board[compY][kingX].piece <= 90))
+                {
+                    break;
+                }
+                else if (
+                            chessBoard->board[compY][kingX].piece == 'r' ||
+                            chessBoard->board[compY][kingX].piece == 'q'
+                )
+                {
+                    return true;
+                }
+                compY++;
+            }
+        }
+
+        // checks right
+
+        if (kingX + 1 <= 7)
+        {
+            if (chessBoard->board[kingY][kingX + 1].piece == 'k')
+            {
+                return true;
+            }
+            compX = kingX + 1;
+            while (compX <= 7)
+            {
+                if ((chessBoard->board[kingY][compX].piece >= 65 && chessBoard->board[kingY][compX].piece <= 90))
+                {
+                    break;
+                }
+                else if (
+                            chessBoard->board[kingY][compX].piece == 'r' ||
+                            chessBoard->board[kingY][compX].piece == 'q'
+                )
+                {
+                    return true;
+                }
+                compX++;
+            }
+        }
+
+        // checks left
+
+        if (kingX - 1 >= 0)
+        {
+            if (chessBoard->board[kingY][kingX - 1].piece == 'k')
+            {
+                return true;
+            }
+            compX = kingX - 1;
+            while (compX >= 0)
+            {
+                if ((chessBoard->board[kingY][compX].piece >= 65 && chessBoard->board[kingY][compX].piece <= 90))
+                {
+                    break;
+                }
+                else if (
+                            chessBoard->board[kingY][compX].piece == 'r' ||
+                            chessBoard->board[kingY][compX].piece == 'q'
+                )
+                {
+                    return true;
+                }
+                compX--;
+            }
+        }
+
+        // forward right diagonal
+
+        if ((kingX + 1) <= 7 && (kingY - 1) >= 0)
+        {
+            if (chessBoard->board[kingY - 1][kingX + 1].piece == 'k' || chessBoard->board[kingY - 1][kingX + 1].piece == 'p')
+            {
+                return true;
+            }
+            compX = kingX + 1, compY = kingY - 1;
+            while (compX <= 7 && compY >= 0)
+            {
+                if ((chessBoard->board[compY][compX].piece >= 65 && chessBoard->board[compY][compX].piece <= 90))
+                {
+                    break;
+                }
+                else if (
+                            chessBoard->board[compY][compX].piece == 'q' ||
+                            chessBoard->board[compY][compX].piece == 'b'    
+                )
+                {
+                    return true;
+                }
+                compX++, compY--;
+            }
+        }
+
+
+
+        // if the functino does not return true
+        return false;
+    }
+    else
+    {
+        return false;
+    }
+
+
 }
 
 bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
@@ -444,7 +587,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
     There was originally a switch statement for black pieces here, but I feel like that would take up too much time and resources during runtime.
     I think instead of simulating all 64x64 possibilities, we should somehow generate a list of only legal moves first which is also ranked somehow.    
     */
-    if (!moveLeavesKingInCheck(coordStart, coordDestination, chessBoard))
+    if (!moveLeavesKingInCheck(chessBoard, 0))
     {
         return true;
     }
