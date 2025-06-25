@@ -423,6 +423,24 @@ bool moveLeavesKingInCheck(BOARD *chessBoard, int color)    // 0 for white, 1 fo
             }
         }
 
+        // check for knight moves
+
+        int knightMoves[8][2] = {
+            {-2, -1}, {-2, +1}, {-1, -2}, {-1, +2},
+            {+1, -2}, {+1, +2}, {+2, -1}, {+2, +1}
+        };
+
+        for (int i = 0; i < 8; i++) {
+            int nx = kingX + knightMoves[i][1];
+            int ny = kingY + knightMoves[i][0];
+
+            if (nx >= 0 && nx <= 7 && ny >= 0 && ny <= 7) {
+                if (chessBoard->board[ny][nx].piece == 'n') {
+                    return true;
+                }
+            }
+        }
+
         //backward left diagonal
 
         if ((kingX - 1) >= 0 && (kingY + 1) <= 7)
@@ -449,17 +467,17 @@ bool moveLeavesKingInCheck(BOARD *chessBoard, int color)    // 0 for white, 1 fo
             }
         }
 
-        /*
-        *****************************************************
-        TODO: CHECK IF KNIGHT MOVE WILL PUT THE KING IN CHECK
-        *****************************************************
-        */
-
         // if the functino does not return true
         return false;
     }
     else
     {
+        /*
+        This is where the same checks will have to be implemented for the black king.
+        return false as a placeholder
+        */
+
+
         return false;
     }
 
@@ -542,7 +560,9 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     }
                 }
                 return false;
+            }
             case 'B':   //white bishop
+            {
                 if (abs(endY - startY) != abs(endX - startX))
                     return false; // not a diagonal move
 
