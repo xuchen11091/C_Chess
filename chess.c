@@ -39,6 +39,8 @@ typedef struct
 
 typedef struct _board
 {
+    char *moveLog[1000];
+    int moveCount;
     piece board[8][8];
     location whiteKing;
     location blackKing;
@@ -91,6 +93,7 @@ BOARD *boardSetUp(void)
     }
     n->blackKing.x = 4, n->blackKing.y = 0;
     n->whiteKing.x = 4, n->whiteKing.y = 7;
+    n->moveCount = 0;
     return n;
 }
 
@@ -122,8 +125,6 @@ bool playPiece(int coordStart, int coordDestination, BOARD *chessBoard)
                 }
             }
             return true;
-
-
         }
         else
         {
@@ -170,6 +171,8 @@ void startGame()
 
             playChecker = playPiece(playCoordinates[0], playCoordinates[1], gameBoard);
         }
+        gameBoard->moveLog[gameBoard->moveCount] = strdup(userMove);
+        gameBoard->moveCount++;
         updateAttackMap(gameBoard);
         playChecker = false;
         ai_playPiece(&ai_score, gameBoard);
@@ -506,7 +509,6 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 {
                     break;
                 }
-
                 // Move forward two from starting position
                 if (startY == 6 && startX == endX && startY - endY == 2)
                 {
@@ -515,6 +517,15 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                         break;
                     }
                 }
+                // checks for whether or not take is possible
+                if ((startY - endY == 1 && abs(endX - startX) == 1))
+                {
+                    if (!checkEmpty(endX, endY, chessBoard) && (chessBoard->board[endY][endX].piece >= 97 && chessBoard->board[endY][endX].piece <= 122))
+                    {
+                        break;
+                    }
+                }
+
 
                 // ******** TODO: handle diagonal captures and en passant *********
                 return false;
@@ -610,13 +621,15 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 // Straight line like a rook
                 else if (startX == endX || startY == endY)
                 {
-                    if (startX == endX) {
+                    if (startX == endX)
+                    {
                         int step = (endY > startY) ? 1 : -1;
                         for (int y = startY + step; y != endY; y += step)
                         {
                             if (!checkEmpty(startX, y, chessBoard)) return false;
                         }
-                    } else if (startY == endY) {
+                    } else if (startY == endY)
+                    {
                         int step = (endX > startX) ? 1 : -1;
                         for (int x = startX + step; x != endX; x += step)
                         {
