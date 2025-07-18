@@ -24,14 +24,14 @@ A terminal-based chess game written in C, featuring:
 - Castling
 - En Passant
 - Pawn promotion
-- Simple AI opponent with minimax (depth 2)
+- Simple AI opponent with minimax (alpha beta pruning)
 - Evaluation scoring for AI
 - Full game over conditions
 
 ## Build & Run
 
 ```bash
-gcc -o chess main.c
+clang -o chess chess.c
 ./chess
 ```
 
