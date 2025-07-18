@@ -24,7 +24,7 @@ const char pieces[] =
     'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'
 };
 
-typedef struct _piece
+typedef struct
 {
     bool live;
     char piece;
@@ -525,9 +525,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                         break;
                     }
                 }
-
-
-                // ******** TODO: handle diagonal captures and en passant *********
+                // ******** TODO: handle en passant *********
                 return false;
             case 'R':   //white rook
                 if (startX == endX && startY != endY)
