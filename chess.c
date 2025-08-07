@@ -82,6 +82,7 @@ void startGame();
 void ai_playPiece(int *AI_SCORE, BOARD *chessBoard);
 int gameCheck(BOARD *chessBoard);
 bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard);
+bool basicMoveChecker(int coordStart, int coordDestination, BOARD *chessBoard);
 void updateAttackMap(BOARD *chessBoard);
 bool moveParsing(char *move, int coordRecorder[]);
 bool isCastle(int coordStart, int coordDestination, BOARD *chessBoard);
@@ -89,6 +90,7 @@ bool checkEmpty(int x, int y, BOARD *chessBoard);
 bool moveLeavesKingInCheck(BOARD *chessBoard, int color);
 int evaluateBoard(BOARD *chessBoard);
 int minimax(BOARD *chessBoard, int depth, int alpha, int beta, bool maximizingPlayer);
+int quiescence(BOARD *chessBoard, int alpha, int beta, bool maximizingPlayer);
 void generateMoves(BOARD *chessBoard, MOVE moves[], int *moveCount, bool isWhite);
 bool makeMove(BOARD *chessBoard, MOVE move);
 void undoMove(BOARD *chessBoard, MOVE move);
@@ -109,7 +111,7 @@ int evaluateCaptures(BOARD *chessBoard, MOVE move);
 void orderMoves(BOARD *chessBoard, MOVE moves[], int moveCount);
 int countAttackers(BOARD *chessBoard, int x, int y, bool isWhite);
 
-int main(int argc, char *argv[])
+int main(void)
 {
     startGame();
     return 0;
@@ -157,105 +159,103 @@ BOARD *boardSetUp(void)
 
 bool playPiece(int coordStart, int coordDestination, BOARD *chessBoard)
 {
-    if (moveChecker(coordStart, coordDestination, chessBoard) == true)
-    {
-        int startX = coordStart % 10, startY = coordStart / 10;
-        int endX = coordDestination % 10, endY = coordDestination / 10;
-        char movedPiece = chessBoard->board[startY][startX].piece;
+    int startX = coordStart % 10, startY = coordStart / 10;
+    int endX = coordDestination % 10, endY = coordDestination / 10;
+    char movedPiece = chessBoard->board[startY][startX].piece;
+    
+    // Basic validation first
+    if (movedPiece == ' ' || startX < 0 || startX > 7 || startY < 0 || startY > 7 || 
+        endX < 0 || endX > 7 || endY < 0 || endY > 7) {
+        return false;
+    }
+    
+    // Check if the piece can make this move (without considering check)
+    if (!basicMoveChecker(coordStart, coordDestination, chessBoard)) {
+        return false;
+    }
+    
+    // Create a test board to validate the move doesn't leave king in check
+    BOARD *testBoard = copyBoard(chessBoard);
+    MOVE move;
+    move.from = coordStart;
+    move.to = coordDestination;
+    move.movedPiece = movedPiece;
+    move.capturedPiece = chessBoard->board[endY][endX].piece;
+    move.promotionPiece = ' ';
+    move.isCastling = false;
+    move.isEnPassant = false;
+    
+    // Check for special moves
+    if (tolower(movedPiece) == 'k' && abs(endX - startX) == 2) {
+        move.isCastling = true;
+    } else if (tolower(movedPiece) == 'p' && abs(endX - startX) == 1 && 
+               chessBoard->board[endY][endX].piece == ' ' &&
+               chessBoard->enPassantFile == endX) {
+        move.isEnPassant = true;
+    }
+    
+    // Make the move on test board
+    makeMove(testBoard, move);
+    
+    // Check if this leaves the king in check
+    bool leavesKingInCheck = moveLeavesKingInCheck(testBoard, isupper(movedPiece) ? 0 : 1);
+    freeBoard(testBoard);
+    
+    if (leavesKingInCheck) {
+        return false;
+    }
+    
+    // Move is legal, now execute it on the real board
+    if (move.isCastling) {
+        // Handle castling
+        bool kingside = (endX > startX);
         
-        // Check for castling
-        if (tolower(movedPiece) == 'k' && abs(endX - startX) == 2) {
-            // This is castling
-            bool kingside = (endX > startX);
-            
-            // Move king
-            chessBoard->board[endY][endX] = chessBoard->board[startY][startX];
-            chessBoard->board[startY][startX].piece = ' ';
-            chessBoard->board[startY][startX].live = false;
-            
-            // Move rook
-            if (kingside) {
-                // Kingside castling
-                chessBoard->board[startY][endX-1] = chessBoard->board[startY][7];
-                chessBoard->board[startY][7].piece = ' ';
-                chessBoard->board[startY][7].live = false;
-            } else {
-                // Queenside castling
-                chessBoard->board[startY][endX+1] = chessBoard->board[startY][0];
-                chessBoard->board[startY][0].piece = ' ';
-                chessBoard->board[startY][0].live = false;
-            }
-            
-            // Update king position and castling rights
-            if (isupper(movedPiece)) {
-                chessBoard->whiteKing.x = endX;
-                chessBoard->whiteKing.y = endY;
-                chessBoard->whiteCanCastleKingside = false;
-                chessBoard->whiteCanCastleQueenside = false;
-                chessBoard->whiteCastled = true;
-            } else {
-                chessBoard->blackKing.x = endX;
-                chessBoard->blackKing.y = endY;
-                chessBoard->blackCanCastleKingside = false;
-                chessBoard->blackCanCastleQueenside = false;
-                chessBoard->blackCastled = true;
-            }
-            
-            return true;
+        // Move king
+        chessBoard->board[endY][endX] = chessBoard->board[startY][startX];
+        chessBoard->board[startY][startX].piece = ' ';
+        chessBoard->board[startY][startX].live = false;
+        
+        // Move rook
+        if (kingside) {
+            chessBoard->board[startY][endX-1] = chessBoard->board[startY][7];
+            chessBoard->board[startY][7].piece = ' ';
+            chessBoard->board[startY][7].live = false;
+        } else {
+            chessBoard->board[startY][endX+1] = chessBoard->board[startY][0];
+            chessBoard->board[startY][0].piece = ' ';
+            chessBoard->board[startY][0].live = false;
         }
         
-        // Check for en passant
-        if (tolower(movedPiece) == 'p' && abs(endX - startX) == 1 && 
-            chessBoard->board[endY][endX].piece == ' ' &&
-            chessBoard->enPassantFile == endX) {
-            // This is en passant
-            chessBoard->board[endY][endX] = chessBoard->board[startY][startX];
-            chessBoard->board[startY][startX].piece = ' ';
-            chessBoard->board[startY][startX].live = false;
-            
-            // Remove captured pawn
-            int capturedPawnY = isupper(movedPiece) ? endY + 1 : endY - 1;
-            chessBoard->board[capturedPawnY][endX].piece = ' ';
-            chessBoard->board[capturedPawnY][endX].live = false;
-            
-            return true;
+        // Update king position and castling rights
+        if (isupper(movedPiece)) {
+            chessBoard->whiteKing.x = endX;
+            chessBoard->whiteKing.y = endY;
+            chessBoard->whiteCanCastleKingside = false;
+            chessBoard->whiteCanCastleQueenside = false;
+            chessBoard->whiteCastled = true;
+        } else {
+            chessBoard->blackKing.x = endX;
+            chessBoard->blackKing.y = endY;
+            chessBoard->blackCanCastleKingside = false;
+            chessBoard->blackCanCastleQueenside = false;
+            chessBoard->blackCastled = true;
         }
+    } else if (move.isEnPassant) {
+        // Handle en passant
+        chessBoard->board[endY][endX] = chessBoard->board[startY][startX];
+        chessBoard->board[startY][startX].piece = ' ';
+        chessBoard->board[startY][startX].live = false;
         
+        // Remove captured pawn
+        int capturedPawnY = isupper(movedPiece) ? endY + 1 : endY - 1;
+        chessBoard->board[capturedPawnY][endX].piece = ' ';
+        chessBoard->board[capturedPawnY][endX].live = false;
+    } else {
         // Regular move
         chessBoard->board[endY][endX] = chessBoard->board[startY][startX];
         chessBoard->board[startY][startX].piece = ' ';
         chessBoard->board[startY][startX].live = false;
         chessBoard->board[endY][endX].live = true;
-
-        // Update king position
-        if (tolower(movedPiece) == 'k') {
-            if (isupper(movedPiece)) {
-                chessBoard->whiteKing.x = endX;
-                chessBoard->whiteKing.y = endY;
-                chessBoard->whiteCanCastleKingside = false;
-                chessBoard->whiteCanCastleQueenside = false;
-            } else {
-                chessBoard->blackKing.x = endX;
-                chessBoard->blackKing.y = endY;
-                chessBoard->blackCanCastleKingside = false;
-                chessBoard->blackCanCastleQueenside = false;
-            }
-        }
-        
-        // Update castling rights if rook moves
-        if (tolower(movedPiece) == 'r') {
-            if (startX == 0 && startY == 0) chessBoard->blackCanCastleQueenside = false;
-            if (startX == 7 && startY == 0) chessBoard->blackCanCastleKingside = false;
-            if (startX == 0 && startY == 7) chessBoard->whiteCanCastleQueenside = false;
-            if (startX == 7 && startY == 7) chessBoard->whiteCanCastleKingside = false;
-        }
-        
-        // Set en passant target if pawn moves two squares
-        chessBoard->enPassantFile = -1;
-        if (tolower(movedPiece) == 'p' && abs(endY - startY) == 2) {
-            chessBoard->enPassantFile = startX;
-            chessBoard->enPassantRank = (startY + endY) / 2;
-        }
         
         // Handle pawn promotion
         if (tolower(movedPiece) == 'p' && (endY == 0 || endY == 7)) {
@@ -264,20 +264,43 @@ bool playPiece(int coordStart, int coordDestination, BOARD *chessBoard)
             scanf(" %c", &promotion);
             promotion = toupper(promotion);
             if (promotion != 'Q' && promotion != 'R' && promotion != 'B' && promotion != 'N') {
-                promotion = 'Q'; // Default to queen
+                promotion = 'Q';
             }
             chessBoard->board[endY][endX].piece = isupper(movedPiece) ? promotion : tolower(promotion);
         }
-        
-        // Validate the move doesn't leave king in check
-        if (!moveLeavesKingInCheck(chessBoard, isupper(movedPiece) ? 0 : 1)) {
-            return true;
+    }
+    
+    // Update king position for regular moves
+    if (tolower(movedPiece) == 'k' && !move.isCastling) {
+        if (isupper(movedPiece)) {
+            chessBoard->whiteKing.x = endX;
+            chessBoard->whiteKing.y = endY;
+            chessBoard->whiteCanCastleKingside = false;
+            chessBoard->whiteCanCastleQueenside = false;
         } else {
-            // Move is illegal, need to undo it (this is complex, so for now just return false)
-            return false;
+            chessBoard->blackKing.x = endX;
+            chessBoard->blackKing.y = endY;
+            chessBoard->blackCanCastleKingside = false;
+            chessBoard->blackCanCastleQueenside = false;
         }
     }
-    return false;
+    
+    // Update castling rights if rook moves
+    if (tolower(movedPiece) == 'r') {
+        if (startX == 0 && startY == 0) chessBoard->blackCanCastleQueenside = false;
+        if (startX == 7 && startY == 0) chessBoard->blackCanCastleKingside = false;
+        if (startX == 0 && startY == 7) chessBoard->whiteCanCastleQueenside = false;
+        if (startX == 7 && startY == 7) chessBoard->whiteCanCastleKingside = false;
+    }
+    
+    // Set en passant target if pawn moves two squares
+    chessBoard->enPassantFile = -1;
+    if (tolower(movedPiece) == 'p' && abs(endY - startY) == 2) {
+        chessBoard->enPassantFile = startX;
+        chessBoard->enPassantRank = (startY + endY) / 2;
+    }
+    
+    return true;
 }
 
 bool isCastle(int coordStart, int coordDestination, BOARD *chessBoard)
@@ -303,7 +326,7 @@ void startGame()
 
     int ai_score = 0;
 
-    printf("Please enter a move in the format of 0A1B, with 0A being the starting POS and 1B as the destination pos.\n");
+    printf("Please enter a move in the format of 1a2b, with 1a being the starting position and 2b as the destination position.\n");
 
     int gameResult;
     while ((gameResult = gameCheck(gameBoard)) == 0)
@@ -321,7 +344,7 @@ void startGame()
 
             playChecker = playPiece(playCoordinates[0], playCoordinates[1], gameBoard);
         }
-        gameBoard->moveLog[gameBoard->moveCount] = strdup(userMove);
+        // Avoid memory leak - just increment counter
         gameBoard->moveCount++;
         updateAttackMap(gameBoard);
         
@@ -345,7 +368,7 @@ bool moveParsing(char *move, int coordRecorder[])
 {
     if (strlen(move) != 4)
     {
-        printf("Invaid input lengt\n");
+        printf("Invalid input length\n");
         return false;
     }
 
@@ -361,8 +384,8 @@ bool moveParsing(char *move, int coordRecorder[])
         (tolower(move[3]) >= 'a' && tolower(move[3]) <= 'h'))
     {
 
-        coordRecorder[0] = (7 - (move[0] - '1')) * 10 + (tolower(move[1]) - 'a');
-        coordRecorder[1] = (7 - (move[2] - '1')) * 10 + (tolower(move[3]) - 'a');
+        coordRecorder[0] = (8 - (move[0] - '0')) * 10 + (tolower(move[1]) - 'a');
+        coordRecorder[1] = (8 - (move[2] - '0')) * 10 + (tolower(move[3]) - 'a');
         return true;
     }
     printf("Invalid input\n");
@@ -380,7 +403,7 @@ void updateAttackMap(BOARD *chessBoard)
         }
     }
     
-    // Generate attack maps for all pieces
+    // Generate attack maps manually without recursion to avoid infinite loops
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
             char piece = chessBoard->board[y][x].piece;
@@ -388,18 +411,178 @@ void updateAttackMap(BOARD *chessBoard)
             
             bool isWhite = isupper(piece);
             
-            // Mark squares this piece attacks
-            for (int ty = 0; ty < 8; ty++) {
-                for (int tx = 0; tx < 8; tx++) {
-                    int from = y * 10 + x;
-                    int to = ty * 10 + tx;
-                    if (from != to && moveChecker(from, to, chessBoard)) {
-                        if (isWhite) {
-                            chessBoard->whiteAttacks[ty][tx] = true;
-                        } else {
-                            chessBoard->blackAttacks[ty][tx] = true;
+            switch (tolower(piece)) {
+                case 'p': {
+                    // Pawn attacks diagonally
+                    int direction = isWhite ? -1 : 1;
+                    if (y + direction >= 0 && y + direction < 8) {
+                        if (x > 0 && isWhite) chessBoard->whiteAttacks[y + direction][x - 1] = true;
+                        if (x < 7 && isWhite) chessBoard->whiteAttacks[y + direction][x + 1] = true;
+                        if (x > 0 && !isWhite) chessBoard->blackAttacks[y + direction][x - 1] = true;
+                        if (x < 7 && !isWhite) chessBoard->blackAttacks[y + direction][x + 1] = true;
+                    }
+                    break;
+                }
+                case 'r': {
+                    // Rook attacks horizontally and vertically
+                    for (int i = 1; i < 8; i++) {
+                        // Right
+                        if (x + i < 8) {
+                            if (isWhite) chessBoard->whiteAttacks[y][x + i] = true;
+                            else chessBoard->blackAttacks[y][x + i] = true;
+                            if (chessBoard->board[y][x + i].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        // Left
+                        if (x - i >= 0) {
+                            if (isWhite) chessBoard->whiteAttacks[y][x - i] = true;
+                            else chessBoard->blackAttacks[y][x - i] = true;
+                            if (chessBoard->board[y][x - i].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        // Up
+                        if (y - i >= 0) {
+                            if (isWhite) chessBoard->whiteAttacks[y - i][x] = true;
+                            else chessBoard->blackAttacks[y - i][x] = true;
+                            if (chessBoard->board[y - i][x].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        // Down
+                        if (y + i < 8) {
+                            if (isWhite) chessBoard->whiteAttacks[y + i][x] = true;
+                            else chessBoard->blackAttacks[y + i][x] = true;
+                            if (chessBoard->board[y + i][x].piece != ' ') break;
+                        } else break;
+                    }
+                    break;
+                }
+                case 'n': {
+                    // Knight attacks
+                    int knightMoves[8][2] = {{-2,-1},{-2,1},{-1,-2},{-1,2},{1,-2},{1,2},{2,-1},{2,1}};
+                    for (int i = 0; i < 8; i++) {
+                        int ny = y + knightMoves[i][0];
+                        int nx = x + knightMoves[i][1];
+                        if (ny >= 0 && ny < 8 && nx >= 0 && nx < 8) {
+                            if (isWhite) chessBoard->whiteAttacks[ny][nx] = true;
+                            else chessBoard->blackAttacks[ny][nx] = true;
                         }
                     }
+                    break;
+                }
+                case 'b': {
+                    // Bishop attacks diagonally
+                    for (int i = 1; i < 8; i++) {
+                        // Up-right
+                        if (y - i >= 0 && x + i < 8) {
+                            if (isWhite) chessBoard->whiteAttacks[y - i][x + i] = true;
+                            else chessBoard->blackAttacks[y - i][x + i] = true;
+                            if (chessBoard->board[y - i][x + i].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        // Up-left
+                        if (y - i >= 0 && x - i >= 0) {
+                            if (isWhite) chessBoard->whiteAttacks[y - i][x - i] = true;
+                            else chessBoard->blackAttacks[y - i][x - i] = true;
+                            if (chessBoard->board[y - i][x - i].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        // Down-right
+                        if (y + i < 8 && x + i < 8) {
+                            if (isWhite) chessBoard->whiteAttacks[y + i][x + i] = true;
+                            else chessBoard->blackAttacks[y + i][x + i] = true;
+                            if (chessBoard->board[y + i][x + i].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        // Down-left
+                        if (y + i < 8 && x - i >= 0) {
+                            if (isWhite) chessBoard->whiteAttacks[y + i][x - i] = true;
+                            else chessBoard->blackAttacks[y + i][x - i] = true;
+                            if (chessBoard->board[y + i][x - i].piece != ' ') break;
+                        } else break;
+                    }
+                    break;
+                }
+                case 'q': {
+                    // Queen = Rook + Bishop attacks (combined logic)
+                    // Rook-like moves
+                    for (int i = 1; i < 8; i++) {
+                        if (x + i < 8) {
+                            if (isWhite) chessBoard->whiteAttacks[y][x + i] = true;
+                            else chessBoard->blackAttacks[y][x + i] = true;
+                            if (chessBoard->board[y][x + i].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        if (x - i >= 0) {
+                            if (isWhite) chessBoard->whiteAttacks[y][x - i] = true;
+                            else chessBoard->blackAttacks[y][x - i] = true;
+                            if (chessBoard->board[y][x - i].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        if (y - i >= 0) {
+                            if (isWhite) chessBoard->whiteAttacks[y - i][x] = true;
+                            else chessBoard->blackAttacks[y - i][x] = true;
+                            if (chessBoard->board[y - i][x].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        if (y + i < 8) {
+                            if (isWhite) chessBoard->whiteAttacks[y + i][x] = true;
+                            else chessBoard->blackAttacks[y + i][x] = true;
+                            if (chessBoard->board[y + i][x].piece != ' ') break;
+                        } else break;
+                    }
+                    // Bishop-like moves
+                    for (int i = 1; i < 8; i++) {
+                        if (y - i >= 0 && x + i < 8) {
+                            if (isWhite) chessBoard->whiteAttacks[y - i][x + i] = true;
+                            else chessBoard->blackAttacks[y - i][x + i] = true;
+                            if (chessBoard->board[y - i][x + i].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        if (y - i >= 0 && x - i >= 0) {
+                            if (isWhite) chessBoard->whiteAttacks[y - i][x - i] = true;
+                            else chessBoard->blackAttacks[y - i][x - i] = true;
+                            if (chessBoard->board[y - i][x - i].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        if (y + i < 8 && x + i < 8) {
+                            if (isWhite) chessBoard->whiteAttacks[y + i][x + i] = true;
+                            else chessBoard->blackAttacks[y + i][x + i] = true;
+                            if (chessBoard->board[y + i][x + i].piece != ' ') break;
+                        } else break;
+                    }
+                    for (int i = 1; i < 8; i++) {
+                        if (y + i < 8 && x - i >= 0) {
+                            if (isWhite) chessBoard->whiteAttacks[y + i][x - i] = true;
+                            else chessBoard->blackAttacks[y + i][x - i] = true;
+                            if (chessBoard->board[y + i][x - i].piece != ' ') break;
+                        } else break;
+                    }
+                    break;
+                }
+                case 'k': {
+                    // King attacks adjacent squares
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dx = -1; dx <= 1; dx++) {
+                            if (dy == 0 && dx == 0) continue;
+                            int ny = y + dy, nx = x + dx;
+                            if (ny >= 0 && ny < 8 && nx >= 0 && nx < 8) {
+                                if (isWhite) chessBoard->whiteAttacks[ny][nx] = true;
+                                else chessBoard->blackAttacks[ny][nx] = true;
+                            }
+                        }
+                    }
+                    break;
                 }
             }
         }
@@ -472,9 +655,6 @@ int evaluateBoard(BOARD *chessBoard)
     int whiteBishops = 0, blackBishops = 0;
     int whiteRooks = 0, blackRooks = 0;
     
-    // TACTICAL EVALUATION - Check for hanging pieces
-    int hangingPenalty = 0;
-    
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
             char piece = chessBoard->board[y][x].piece;
@@ -483,10 +663,14 @@ int evaluateBoard(BOARD *chessBoard)
             int pieceValue = 0;
             int positionalValue = 0;
             
-            // Check if piece is hanging (BIG TACTICAL PENALTY)
-            if (isPieceHanging(chessBoard, x, y)) {
-                int hangingValue = getPieceValue(piece) * 200; // Massive penalty for hanging pieces
-                if (isupper(piece)) {
+            // Check if piece is hanging using precomputed attack maps
+            bool isPieceWhite = isupper(piece);
+            bool isUnderAttack = isPieceWhite ? chessBoard->blackAttacks[y][x] : chessBoard->whiteAttacks[y][x];
+            bool isDefended = isPieceWhite ? chessBoard->whiteAttacks[y][x] : chessBoard->blackAttacks[y][x];
+            
+            if (isUnderAttack && !isDefended) {
+                int hangingValue = getPieceValue(piece) * 100; // Penalty for hanging pieces
+                if (isPieceWhite) {
                     score += hangingValue; // White piece hanging is bad for white
                 } else {
                     score -= hangingValue; // Black piece hanging is good for white
@@ -601,16 +785,6 @@ int evaluateBoard(BOARD *chessBoard)
                     break;
             }
             
-            // Check if piece is defended/safe
-            bool isPieceWhite = isupper(piece);
-            int attackers = countAttackers(chessBoard, x, y, !isPieceWhite);
-            int defenders = countAttackers(chessBoard, x, y, isPieceWhite) - 1; // Don't count the piece itself
-            
-            if (attackers > defenders && attackers > 0) {
-                // Piece is under attack with insufficient defense
-                pieceValue -= (getPieceValue(piece) * (attackers - defenders)) / 4;
-            }
-            
             int totalValue = (pieceValue * 100 + positionalValue) / 100;
             
             if (isupper(piece)) {
@@ -629,14 +803,15 @@ int evaluateBoard(BOARD *chessBoard)
     if (whiteRooks >= 2) score -= BONUS_CONNECTED_ROOKS / 2;
     if (blackRooks >= 2) score += BONUS_CONNECTED_ROOKS / 2;
     
-    // Mobility bonus (but less important than tactics)
-    MOVE moves[200];
-    int moveCount;
-    generateMoves(chessBoard, moves, &moveCount, false);
-    score += moveCount / 2; // Reduced mobility weight
-    
-    generateMoves(chessBoard, moves, &moveCount, true);
-    score -= moveCount / 2; // Reduced mobility weight
+    // Simple mobility evaluation - just count attacked squares
+    int whiteMobility = 0, blackMobility = 0;
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            if (chessBoard->whiteAttacks[y][x]) whiteMobility++;
+            if (chessBoard->blackAttacks[y][x]) blackMobility++;
+        }
+    }
+    score += (blackMobility - whiteMobility) / 4; // Reduced mobility weight
     
     return score;
 }
@@ -833,7 +1008,7 @@ void generateMoves(BOARD *chessBoard, MOVE moves[], int *moveCount, bool isWhite
                     int to = ty * 10 + tx;
                     if (from == to) continue;
                     
-                    if (moveChecker(from, to, chessBoard)) {
+                    if (basicMoveChecker(from, to, chessBoard)) {
                         // Check for pawn promotion
                         if (tolower(piece) == 'p' && (ty == 0 || ty == 7)) {
                             generatePromotionMoves(chessBoard, moves, moveCount, isWhite, from, to);
@@ -848,11 +1023,50 @@ void generateMoves(BOARD *chessBoard, MOVE moves[], int *moveCount, bool isWhite
                             move.isEnPassant = false;
                             move.score = 0;
                             
-                            // Test if this move leaves king in check by making the move temporarily
-                            BOARD *testBoard = copyBoard(chessBoard);
-                            makeMove(testBoard, move);
-                            bool leavesKingInCheck = moveLeavesKingInCheck(testBoard, isWhite ? 0 : 1);
-                            freeBoard(testBoard);
+                            // Fast check: Test if this move leaves king in check by simulating the move
+                            char originalCaptured = chessBoard->board[ty][tx].piece;
+                            bool originalLive = chessBoard->board[ty][tx].live;
+                            
+                            // Make temporary move
+                            chessBoard->board[ty][tx] = chessBoard->board[y][x];
+                            chessBoard->board[y][x].piece = ' ';
+                            chessBoard->board[y][x].live = false;
+                            
+                            // Update king position if king moved
+                            int oldKingX = -1, oldKingY = -1;
+                            bool kingMoved = false;
+                            if (tolower(piece) == 'k') {
+                                kingMoved = true;
+                                if (isWhite) {
+                                    oldKingX = chessBoard->whiteKing.x;
+                                    oldKingY = chessBoard->whiteKing.y;
+                                    chessBoard->whiteKing.x = tx;
+                                    chessBoard->whiteKing.y = ty;
+                                } else {
+                                    oldKingX = chessBoard->blackKing.x;
+                                    oldKingY = chessBoard->blackKing.y;
+                                    chessBoard->blackKing.x = tx;
+                                    chessBoard->blackKing.y = ty;
+                                }
+                            }
+                            
+                            bool leavesKingInCheck = moveLeavesKingInCheck(chessBoard, isWhite ? 0 : 1);
+                            
+                            // Restore board state
+                            chessBoard->board[y][x] = chessBoard->board[ty][tx];
+                            chessBoard->board[ty][tx].piece = originalCaptured;
+                            chessBoard->board[ty][tx].live = originalLive;
+                            
+                            // Restore king position if needed
+                            if (kingMoved) {
+                                if (isWhite) {
+                                    chessBoard->whiteKing.x = oldKingX;
+                                    chessBoard->whiteKing.y = oldKingY;
+                                } else {
+                                    chessBoard->blackKing.x = oldKingX;
+                                    chessBoard->blackKing.y = oldKingY;
+                                }
+                            }
                             
                             if (!leavesKingInCheck) {
                                 moves[(*moveCount)++] = move;
@@ -868,10 +1082,102 @@ void generateMoves(BOARD *chessBoard, MOVE moves[], int *moveCount, bool isWhite
     }
 }
 
+int quiescence(BOARD *chessBoard, int alpha, int beta, bool maximizingPlayer)
+{
+    int standPat = evaluateBoard(chessBoard);
+    
+    if (maximizingPlayer) {
+        if (standPat >= beta) return beta;
+        if (alpha < standPat) alpha = standPat;
+    } else {
+        if (standPat <= alpha) return alpha;
+        if (beta > standPat) beta = standPat;
+    }
+    
+    // Generate only captures for quiescence search
+    MOVE moves[200];
+    int moveCount = 0;
+    
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            char piece = chessBoard->board[y][x].piece;
+            if (piece == ' ') continue;
+            
+            bool isPieceWhite = isupper(piece);
+            if (isPieceWhite != maximizingPlayer) continue;
+            
+            int from = y * 10 + x;
+            
+            for (int ty = 0; ty < 8; ty++) {
+                for (int tx = 0; tx < 8; tx++) {
+                    int to = ty * 10 + tx;
+                    if (from == to) continue;
+                    
+                    // Only consider captures
+                    if (chessBoard->board[ty][tx].piece == ' ') continue;
+                    
+                    if (basicMoveChecker(from, to, chessBoard)) {
+                        MOVE move;
+                        move.from = from;
+                        move.to = to;
+                        move.movedPiece = piece;
+                        move.capturedPiece = chessBoard->board[ty][tx].piece;
+                        move.promotionPiece = ' ';
+                        move.isCastling = false;
+                        move.isEnPassant = false;
+                        move.score = 0;
+                        
+                        // Quick legal move check
+                        char originalCaptured = chessBoard->board[ty][tx].piece;
+                        bool originalLive = chessBoard->board[ty][tx].live;
+                        
+                        chessBoard->board[ty][tx] = chessBoard->board[y][x];
+                        chessBoard->board[y][x].piece = ' ';
+                        chessBoard->board[y][x].live = false;
+                        
+                        bool leavesKingInCheck = moveLeavesKingInCheck(chessBoard, maximizingPlayer ? 0 : 1);
+                        
+                        chessBoard->board[y][x] = chessBoard->board[ty][tx];
+                        chessBoard->board[ty][tx].piece = originalCaptured;
+                        chessBoard->board[ty][tx].live = originalLive;
+                        
+                        if (!leavesKingInCheck) {
+                            moves[moveCount++] = move;
+                            if (moveCount >= 200) break;
+                        }
+                    }
+                }
+                if (moveCount >= 200) break;
+            }
+            if (moveCount >= 200) break;
+        }
+        if (moveCount >= 200) break;
+    }
+    
+    // Order captures by MVV-LVA
+    orderMoves(chessBoard, moves, moveCount);
+    
+    for (int i = 0; i < moveCount; i++) {
+        makeMove(chessBoard, moves[i]);
+        int score = quiescence(chessBoard, alpha, beta, !maximizingPlayer);
+        undoMove(chessBoard, moves[i]);
+        
+        if (maximizingPlayer) {
+            if (score >= beta) return beta;
+            if (score > alpha) alpha = score;
+        } else {
+            if (score <= alpha) return alpha;
+            if (score < beta) beta = score;
+        }
+    }
+    
+    return maximizingPlayer ? alpha : beta;
+}
+
 int minimax(BOARD *chessBoard, int depth, int alpha, int beta, bool maximizingPlayer)
 {
     if (depth == 0) {
-        return evaluateBoard(chessBoard);
+        return quiescence(chessBoard, alpha, beta, maximizingPlayer);
     }
     
     MOVE moves[200];
@@ -1495,11 +1801,9 @@ bool moveLeavesKingInCheck(BOARD *chessBoard, int color)    // 0 for white, 1 fo
 
 }
 
-bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
+bool basicMoveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
 {
-    // first check if the move is valid (in terms of if it's a move that can be done by the piece)
-    // then check king safety if the move is played
-    // REMEMBER EN PASSANT, CASTLING, AND PAWN FIRST MOVE
+    // Check if the move is valid for the piece type (no check validation)
     int startX = coordStart % 10, startY = coordStart / 10;
     int endX = coordDestination % 10, endY = coordDestination / 10;
     char piece = chessBoard->board[startY][startX].piece;
@@ -1533,7 +1837,12 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                         break;
                     }
                 }
-                // ******** TODO: handle en passant *********
+                // Check for en passant
+                if (chessBoard->enPassantFile == endX && 
+                    ((isupper(piece) && startY == 3 && endY == 2) || 
+                     (!isupper(piece) && startY == 4 && endY == 5))) {
+                    break;
+                }
                 return false;
             case 'R':   //white rook
                 if (startX == endX && startY != endY)
@@ -1559,7 +1868,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     }
                 }
                 else {
-                    return false; // ❗ invalid rook direction
+                    return false;
                 }
 
                 if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
@@ -1581,7 +1890,7 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
             case 'B':   //white bishop
             {
                 if (abs(endY - startY) != abs(endX - startX))
-                    return false; // not a diagonal move
+                    return false;
 
                 int bishopVertical = endY - startY, bishopHorizontal = endX - startX;
                 int stepVertical = (bishopVertical > 0) ? 1 : -1;
@@ -1597,7 +1906,6 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     y += stepVertical;
                 }
 
-                // final square must be empty or contain black piece
                 if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
                     break;
 
@@ -1647,67 +1955,29 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                         break;
                 }
 
-                return false; // neither a valid bishop nor rook move
+                return false;
             }
             case 'K':   //white king
-                /*
-                This is kind of a really shit way of doing this for the king moveChecker as it is pretty much
-                the queen movecChecker copy and pasted but also checking for whether or not the king only moves 1 square.
+                // Check for castling first
+                if (abs(endX - startX) == 2 && startY == endY) {
+                    return canCastle(chessBoard, true, endX > startX);
+                }
 
-                ** THINGS THAT HAVE TO BE IMPLEMENTED LATER **
-                    - a way to check if the move will put the king in check (after the attackMapChecker is finished)
-                    - a way to check if the move castles the king and a rook (have to check for checks on the way to the rook
-                      and whether or not the king has been moved before castling).
-                */
-
-                // Diagonal like a bishop
+                // Regular king moves (1 square)
                 if (abs(endY - startY) == abs(endX - startX) && abs(endY - startY) == 1)
                 {
-                    int dx = (endX > startX) ? 1 : -1;
-                    int dy = (endY > startY) ? 1 : -1;
-                    int x = startX + dx;
-                    int y = startY + dy;
-
-                    while (x != endX && y != endY)
-                    {
-                        if (!checkEmpty(x, y, chessBoard)) return false;
-                        x += dx;
-                        y += dy;
-                    }
-
                     if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
                         break;
                 }
-
-                // Straight line like a rook
-                else if ((startX == endX && abs(endY - startY) == 1)|| (startY == endY) && abs(endX - startX) == 1)
+                else if ((startX == endX && abs(endY - startY) == 1)|| (startY == endY && abs(endX - startX) == 1))
                 {
-                    if (startX == endX) {
-                        int step = (endY > startY) ? 1 : -1;
-                        for (int y = startY + step; y != endY; y += step)
-                        {
-                            if (!checkEmpty(startX, y, chessBoard)) return false;
-                        }
-                    } else if (startY == endY) {
-                        int step = (endX > startX) ? 1 : -1;
-                        for (int x = startX + step; x != endX; x += step)
-                        {
-                            if (!checkEmpty(x, startY, chessBoard)) return false;
-                        }
-                    }
-
                     if (destination == ' ' || (destination >= 'a' && destination <= 'z'))
                         break;
                 }
 
-                return false; // neither a valid bishop nor rook move
+                return false;
         }
     }
-
-    /*
-    There was originally a switch statement for black pieces here, but I feel like that would take up too much time and resources during runtime.
-    I think instead of simulating all 64x64 possibilities, we should somehow generate a list of only legal moves first which is also ranked somehow.    
-    */
     else if (piece >= 97 && piece <= 122)
     {
         // black pieces
@@ -1734,6 +2004,12 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                     {
                         break;
                     }
+                }
+                // Check for en passant  
+                if (chessBoard->enPassantFile == endX && 
+                    ((isupper(piece) && startY == 3 && endY == 2) || 
+                     (!isupper(piece) && startY == 4 && endY == 5))) {
+                    break;
                 }
                 return false;
             case 'r':   //black rook
@@ -1850,42 +2126,19 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
                 return false;
             }
             case 'k':   //black king
-                // Diagonal like a bishop
+                // Check for castling first
+                if (abs(endX - startX) == 2 && startY == endY) {
+                    return canCastle(chessBoard, false, endX > startX);
+                }
+
+                // Regular king moves (1 square)
                 if (abs(endY - startY) == abs(endX - startX) && abs(endY - startY) == 1)
                 {
-                    int dx = (endX > startX) ? 1 : -1;
-                    int dy = (endY > startY) ? 1 : -1;
-                    int x = startX + dx;
-                    int y = startY + dy;
-
-                    while (x != endX && y != endY)
-                    {
-                        if (!checkEmpty(x, y, chessBoard)) return false;
-                        x += dx;
-                        y += dy;
-                    }
-
                     if (destination == ' ' || (destination >= 'A' && destination <= 'Z'))
                         break;
                 }
-
-                // Straight line like a rook
-                else if ((startX == endX && abs(endY - startY) == 1)|| (startY == endY) && abs(endX - startX) == 1)
+                else if ((startX == endX && abs(endY - startY) == 1)|| (startY == endY && abs(endX - startX) == 1))
                 {
-                    if (startX == endX) {
-                        int step = (endY > startY) ? 1 : -1;
-                        for (int y = startY + step; y != endY; y += step)
-                        {
-                            if (!checkEmpty(startX, y, chessBoard)) return false;
-                        }
-                    } else if (startY == endY) {
-                        int step = (endX > startX) ? 1 : -1;
-                        for (int x = startX + step; x != endX; x += step)
-                        {
-                            if (!checkEmpty(x, startY, chessBoard)) return false;
-                        }
-                    }
-
                     if (destination == ' ' || (destination >= 'A' && destination <= 'Z'))
                         break;
                 }
@@ -1894,11 +2147,40 @@ bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
         }
     }
     
-    if (!moveLeavesKingInCheck(chessBoard, (piece >= 65 && piece <= 90) ? 0 : 1))
-    {
-        return true;
+    return true;
+}
+
+bool moveChecker(int coordStart, int coordDestination, BOARD *chessBoard)
+{
+    // Complete move validation including check detection
+    if (!basicMoveChecker(coordStart, coordDestination, chessBoard)) {
+        return false;
     }
-    return false;
+    
+    // Create temporary board to test if move leaves king in check
+    BOARD *testBoard = copyBoard(chessBoard);
+    
+    // Make the move on test board
+    int startX = coordStart % 10, startY = coordStart / 10;
+    int endX = coordDestination % 10, endY = coordDestination / 10;
+    char piece = chessBoard->board[startY][startX].piece;
+    
+    MOVE move;
+    move.from = coordStart;
+    move.to = coordDestination;
+    move.movedPiece = piece;
+    move.capturedPiece = chessBoard->board[endY][endX].piece;
+    move.promotionPiece = ' ';
+    move.isCastling = (tolower(piece) == 'k' && abs(endX - startX) == 2);
+    move.isEnPassant = (tolower(piece) == 'p' && abs(endX - startX) == 1 && 
+                        chessBoard->board[endY][endX].piece == ' ' &&
+                        chessBoard->enPassantFile == endX);
+    
+    makeMove(testBoard, move);
+    bool leavesKingInCheck = moveLeavesKingInCheck(testBoard, (piece >= 65 && piece <= 90) ? 0 : 1);
+    freeBoard(testBoard);
+    
+    return !leavesKingInCheck;
 }
 
 bool checkEmpty(int x, int y, BOARD *chessBoard)
@@ -1912,25 +2194,12 @@ bool checkEmpty(int x, int y, BOARD *chessBoard)
 
 bool isSquareAttacked(BOARD *chessBoard, int x, int y, bool byWhite)
 {
-    // Check if square (x,y) is attacked by pieces of the given color
-    for (int sy = 0; sy < 8; sy++) {
-        for (int sx = 0; sx < 8; sx++) {
-            char piece = chessBoard->board[sy][sx].piece;
-            if (piece == ' ') continue;
-            
-            bool isPieceWhite = isupper(piece);
-            if (isPieceWhite != byWhite) continue;
-            
-            // Check if this piece can attack the target square
-            int from = sy * 10 + sx;
-            int to = y * 10 + x;
-            
-            if (moveChecker(from, to, chessBoard)) {
-                return true;
-            }
-        }
+    // Use the precomputed attack maps for efficiency
+    if (byWhite) {
+        return chessBoard->whiteAttacks[y][x];
+    } else {
+        return chessBoard->blackAttacks[y][x];
     }
-    return false;
 }
 
 int getPieceValue(char piece)
@@ -1960,7 +2229,7 @@ int countAttackers(BOARD *chessBoard, int x, int y, bool isWhite)
             int from = sy * 10 + sx;
             int to = y * 10 + x;
             
-            if (moveChecker(from, to, chessBoard)) {
+            if (basicMoveChecker(from, to, chessBoard)) {
                 count++;
             }
         }
@@ -2001,7 +2270,7 @@ bool isPieceHanging(BOARD *chessBoard, int x, int y)
                 int from = sy * 10 + sx;
                 int to = y * 10 + x;
                 
-                if (moveChecker(from, to, chessBoard)) {
+                if (basicMoveChecker(from, to, chessBoard)) {
                     int attackerValue = getPieceValue(attackPiece);
                     if (attackerValue < lowestAttackerValue) {
                         lowestAttackerValue = attackerValue;
