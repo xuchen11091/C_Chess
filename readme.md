@@ -23,16 +23,6 @@ Features human vs AI gameplay, full move validation, a tactical evaluation syste
 
 ---
 
-## 📷 Demo
-
-> *(Once ready, place your GIF here and name it `demo.gif`)*
-
-<p align="center">
-  <img src="demo.gif" width="600">
-</p>
-
----
-
 ## 🧠 AI Evaluation Heuristics (Simplified)
 
 ```c
