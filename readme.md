@@ -1,98 +1,131 @@
-# Terminal Chess AI in C
+# ♟️ Terminal Chess AI in C
 
-This project is a fully functioning terminal-based chess game written in C, featuring a playable human vs AI mode, complete with move validation, board evaluation, and minimax AI with alpha-beta pruning. The engine supports advanced chess rules such as castling, en passant, and promotion, and includes a heuristic evaluation system tuned for competitive play.
+A fully playable terminal-based chess game built from scratch in C.  
+Features human vs AI gameplay, full move validation, a tactical evaluation system, and a Minimax AI with alpha-beta pruning. Designed to run in the terminal with fast, optimized performance and support for all major chess rules.
 
 ---
 
 ## 🎮 Features
 
-- Full chess game playable via terminal
-- Human vs AI gameplay
-- Minimax AI with alpha-beta pruning
-- Rule-complete engine:
+- Human vs AI chess game in the terminal
+- Minimax algorithm with alpha-beta pruning
+- Evaluation engine with weighted heuristics:
+  - Material balance
+  - Piece-square tables
+  - King safety, castling bonus, fork bonuses
+- Full move legality validation
   - ✅ Castling (both sides)
   - ✅ En passant
   - ✅ Pawn promotion
-  - ✅ Stalemate and checkmate detection
+  - ✅ Check, checkmate, stalemate detection
 - Opening book for early AI moves
-- Piece-square tables and tactical evaluation (e.g., hanging pieces)
-- Dynamic attack map and king safety tracking
-- Evaluation heuristics for:
-  - Material balance
-  - Passed, doubled, and isolated pawns
-  - Bishop pair, connected rooks, castling bonuses
-  - Hanging pieces and move ordering
+- Dynamic attack maps and pinned piece logic
+- Highly optimized for fast search at depth 4
 
 ---
 
-## 🧠 AI & Evaluation Logic
+## 🧠 AI Evaluation Heuristics (Simplified)
 
-The AI uses a depth-limited minimax algorithm with alpha-beta pruning to search for the best moves. The evaluation function includes:
+```c
+#define VALUE_KING 9999     // arbitrarily large to prioritize king safety
+#define VALUE_QUEEN 9
+#define VALUE_ROOK 5
+#define VALUE_BISHOP 3  
+#define VALUE_KNIGHT 3      
+#define VALUE_PAWN 1
+#define VALUE_PASSED_PAWN 2
+#define BONUS_FORK 3
+#define BONUS_KING_PRESSURE 2
+#define VALUE_CASTLED_KING 50
+#define PENALTY_DOUBLED_PAWN 50
+#define PENALTY_ISOLATED_PAWN 20
+#define BONUS_BISHOP_PAIR 50
+#define BONUS_CONNECTED_ROOKS 25
+#define MAX_DEPTH 4
+#define INFINITY 10000
+```
 
-- `VALUE_PAWN`, `VALUE_KNIGHT`, `VALUE_BISHOP`, `VALUE_ROOK`, `VALUE_QUEEN`, `VALUE_KING`
-- Positional scoring using piece-square tables
-- Tactical considerations (e.g., hanging pieces, MVV-LVA)
-- Bonus/Penalty weights for:
-  - Passed pawns
-  - Doubled/isolated pawns
-  - Castled king
-  - Connected rooks
-  - Bishop pair
-
-AI selects moves based on a scoring function that balances positional strategy and tactical gain.
-
----
-
-## 🧩 Structure
-
-Main components:
-- `BOARD`: Struct containing game state, board, kings' positions, castling rights, en passant targets, etc.
-- `MOVE`: Struct representing legal chess moves, including type (castling, en passant, promotion)
-- `moveChecker()`: Validates individual piece moves
-- `moveLeavesKingInCheck()`: Ensures king is not left in check after a move
-- `evaluateBoard()`: Heuristic board evaluation used by minimax
-- `minimax()`: Recursive AI search with alpha-beta pruning
-- `generateMoves()`: Legal move generator with ordering for efficient pruning
-- `startGame()`: Starts the player-vs-AI match loop
+The engine uses a mix of:
+- **Tactical bonuses** (e.g., forks, pressure)
+- **Positional heuristics** (e.g., doubled pawns, castling)
+- **Piece-square tables** for better piece placement
 
 ---
 
-## 🛠 How to Compile and Run
+## 🛠️ How to Compile and Run
 
 ```bash
-gcc -o chess main.c
+clang -o chess chess.c
 ./chess
 ```
 
-Make sure all your functions and `main()` are in a single file (or adjust filenames accordingly).
+Runs entirely in your terminal. No dependencies.
 
 ---
 
+## 🧪 Sample Game State
+
+```
+Move: 2e4e
+AI plays: f7f6
+  A B C D E F G H
+8|r|n|b|q|k|b|n|r|
+7|p|p|p|p|p| |p|p|
+6| | | | | |p| | |
+5| | | | | | | | |
+4| | | | |P| | | |
+3| | | | | | | | |
+2|P|P|P|P| |P|P|P|
+1|R|N|B|Q|K|B|N|R|
+```
+
+---
+
+## Usage
+
+Input moves in **0A1B** format:
+---
+
+- `0A` = starting square
+- `1B` = destination square
 ## ⌨️ How to Play
 
+Example:
 - Input your moves in the format `2e4e` (start square + end square)
   - e.g. `2e4e` moves the piece at e2 to e4
 - Promotion will prompt a piece selection (Q/R/B/N)
 - The game alternates between player (White) and AI (Black)
 
+```
+Move: 2e3e
+```
 ---
 
-## 📁 Files & Codebase Overview
+## 📈 Optimization Highlights
 
-- `main.c`: Main file containing board logic, AI logic, move evaluation, and game loop
-- No external dependencies (pure standard C)
-- Modular code separated into functions for:
-  - Move generation
-  - Evaluation
-  - AI decision making
-  - Game state validation
+Recent improvements to:
+- **Alpha-beta pruning logic**
+- **Move legality checks** (faster pinned piece detection)
+- **Memory footprint** (no dynamic memory allocation needed)
+
+Search depth of 4 runs smoothly with sub-second response time on modern CPUs.
 
 ---
 
-## 🔍 Potential Improvements
+## 🧩 Project Structure
 
-This is a strong foundation for a chess engine, but here are some possible upgrades:
+All code is written in a **single C file** with:
+- Structs for board state and moves
+- Modular functions for evaluation, move generation, legality, AI logic, and rendering
 
+> 📌 Ideal for understanding how a chess engine works at a low level.
+
+---
+
+# Project Status
+Most planned features are finished, but here are some possible upgrades:
+
+Work in progress — major rules and features still under development.
 - Add a GUI (e.g., SDL, ncurses)
 - Implement PGN/FEN loading and saving
 - Add support for threefold repetition and 50-move rule
@@ -101,9 +134,10 @@ This is a strong foundation for a chess engine, but here are some possible upgra
 
 ---
 
-## 📜 License
+## 🧠 Why I Built This
 
-This project is provided under the MIT License. Feel free to modify, distribute, or build upon it.
+I really enjoy the simplicity of low level programming and to improve my skills, I decided to challenge myself to build a rule-complete chess engine from scratch, entirely in a single C file, without external libraries.
+The AI uses a depth-4 minimax with tactical and positional evaluation, and was built to run cleanly and quickly in the terminal.
 
 ---
 
@@ -113,6 +147,13 @@ Developed by Xu Chen (xuchen11091). Built using C and lots of debug patience. AI
 
 ---
 
-## 💬 Final Notes
+## License
 
-This project serves as a deep dive into how chess engines work under the hood — from board representation to AI search strategies. All rules are implemented manually without external libraries or prebuilt chess engines. It’s a great resource for learning AI, data structures, and game logic in C.
+MIT License (or specify if otherwise).
+
+
+---
+
+## 📬 Contact
+
+Feel free to reach out or fork this repo if you'd like to contribute or suggest improvements.
