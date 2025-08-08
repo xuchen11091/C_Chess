@@ -144,8 +144,7 @@ Work in progress — major rules and features still under development.
 
 ## 🧠 Why I Built This
 
-I really enjoy the simplicity of low level programming and to improve my skills, I decided to challenge myself to build a rule-complete chess engine from scratch, entirely in a single C file, without external libraries.
-The AI uses a depth-4 minimax with tactical and positional evaluation, and was built to run cleanly and quickly in the terminal.
+I’ve always been drawn to low-level programming, especially the clarity and control you get when working in C. It’s often called a “simple” language, but that simplicity is what makes it so challenging — you’re exposed to every detail. I wanted to explore game development and AI from the ground up, so I set out to build a full chess engine from scratch, including the AI. I wrote the minimax algorithm myself and implemented all the move validation, board evaluation, and edge cases manually. Throughout the project, I found myself thinking more critically about structure, readability, and long-term maintainability — and that mindset really helped sharpen my fundamentals. It also gave me deeper insight into search trees, evaluation heuristics, and optimization, while reinforcing what I enjoy most: building something complex from the ground up.
 
 ---
 
