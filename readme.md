@@ -81,6 +81,14 @@ AI plays: f7f6
 
 ---
 
+## 📷 Demo
+
+<p align="center">
+  <img src="chessGameplayDemo.gif" width="600">
+</p>
+
+---
+
 ## Usage
 
 Input moves in **0A1B** format:
