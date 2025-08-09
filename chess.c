@@ -110,6 +110,7 @@ bool isPieceHanging(BOARD *chessBoard, int x, int y);
 int evaluateCaptures(BOARD *chessBoard, MOVE move);
 void orderMoves(BOARD *chessBoard, MOVE moves[], int moveCount);
 int countAttackers(BOARD *chessBoard, int x, int y, bool isWhite);
+static void sanityValidateBoard(BOARD *b, const char *phase);
 
 int main(void)
 {
@@ -345,8 +346,10 @@ void startGame()
             playChecker = playPiece(playCoordinates[0], playCoordinates[1], gameBoard);
         }
         // Avoid memory leak - just increment counter
+        sanityValidateBoard(gameBoard, "after player");
         gameBoard->moveCount++;
         updateAttackMap(gameBoard);
+        sanityValidateBoard(gameBoard, "after player"); //comment out after debugging
         
         // Check if game ended after player move
         if ((gameResult = gameCheck(gameBoard)) != 0) {
@@ -357,6 +360,7 @@ void startGame()
         playChecker = false;
         ai_playPiece(&ai_score, gameBoard);
         updateAttackMap(gameBoard);
+        sanityValidateBoard(gameBoard, "after AI"); //comment out after debugging
     }
     
     // Game has ended - print final result
@@ -2657,4 +2661,21 @@ void printBoard(BOARD *chessBoard)
         printf("\n");
     }
     printf("\n");
+}
+
+static void sanityValidateBoard(BOARD *b, const char *phase)
+{
+    // e2 must be empty after e2-e4; more generally, no square should flip side without cause.
+    // Count white/black pieces and ensure king squares are correct chars.
+    int w=0,bk=0;
+    for (int y=0;y<8;y++) for (int x=0;x<8;x++) {
+        char p=b->board[y][x].piece;
+        if (p>='A'&&p<='Z') w++;
+        else if (p>='a'&&p<='z') bk++;
+    }
+    char wk = b->board[b->whiteKing.y][b->whiteKing.x].piece;
+    char bkch= b->board[b->blackKing.y][b->blackKing.x].piece;
+    if (wk!='K'||bkch!='k') {
+        printf("[SANITY] %s: king mismatch K=%c k=%c\n", phase, wk, bkch);
+    }
 }
