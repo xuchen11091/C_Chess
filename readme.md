@@ -130,6 +130,13 @@ All code is written in a **single C file** with:
 
 ---
 
+## Development Process
+This project was designed and implemented solely by me.  
+All code was written manually, without AI code generation.  
+The full commit history documents the step-by-step development process.
+
+---
+
 # Project Status
 Most planned features are finished, but here are some possible upgrades:
 
