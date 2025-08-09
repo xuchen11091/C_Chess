@@ -139,6 +139,9 @@ Work in progress — major rules and features still under development.
 - Add support for threefold repetition and 50-move rule
 - Integrate a more advanced evaluation model (e.g., neural network or centipawn analysis)
 - Support UCI protocol for third-party GUI engines
+- Improvements to the AI:
+  -  Right now the AI still struggles with threat detection especially with passed pawns.
+  -  On hold right now.
 
 ---
 
